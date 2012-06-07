@@ -27,7 +27,6 @@
 
 #include "facebook/feedserviceutils2.h"
 #include "facebook/common.h"
-#include "key.h"
 
 //#define DEBUG_LOG(msg) g_debug(msg)
 #define DEBUG_LOG(msg)
