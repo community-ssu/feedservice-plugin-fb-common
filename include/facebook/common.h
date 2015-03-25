@@ -39,42 +39,42 @@
 #define FACEBOOK_ERROR_QUARK "FACEBOOK_ERROR"
 
 typedef struct {
-  gchar * secret_key;
-  gchar * session_key;
-  gchar * uid;
-  gchar * email;
+  gchar *secret;
+  gchar *session_key;
+  gchar *uid;
+  gchar *email;
 }facebook_credentials;
 
 typedef struct {
   guint type;
-  gchar* secret_key;
-  gchar* session_key;
-  gchar* uid;
+  gchar *secret;
+  gchar *session_key;
+  gchar *uid;
   glong tv_sec;
-  gchar* email;
-  gchar* password;
-  GHashTable* query_params;
-  query_loader* db_loader;
-  db_interface* database;
-  file_watcher* watcher;
-  void* data;
+  gchar *email;
+  gchar *password;
+  GHashTable *query_params;
+  query_loader *db_loader;
+  db_interface *database;
+  file_watcher *watcher;
+  void *data;
   gint validation_status;
 }facebook_request;
 
 extern void
-facebook_store_credentials_to_gconf(facebook_credentials* credentials);
+facebook_store_credentials_to_gconf(facebook_credentials *credentials) __attribute__ ((deprecated));
 
-extern facebook_credentials*
-facebook_credentials_from_gconf(void);
-
-extern void
-facebook_credentials_free(facebook_credentials* credentials);
+extern facebook_credentials *
+facebook_credentials_from_gconf(void) __attribute__ ((deprecated));
 
 extern void
-facebook_delete_credentials(void);
+facebook_credentials_free(facebook_credentials* credentials) __attribute__ ((deprecated));
+
+extern void
+facebook_delete_credentials(void) __attribute__ ((deprecated));
 
 extern gboolean
-facebook_is_credentials_exist(void);
+facebook_is_credentials_exist(void) __attribute__ ((deprecated));
 
 extern void
 facebook_set_email(gchar* email);
@@ -84,23 +84,23 @@ facebook_get_email(void);
 
 extern facebook_credentials*
 facebook_login(facebook_request* request,
-                                            ConIcConnection* con,
-                                            HttpProgress* progress,
-                                            GError** error);
+               ConIcConnection* con,
+               HttpProgress* progress,
+               GError** error) __attribute__ ((deprecated));
 
 extern gboolean
-generate_signature(facebook_request* request);
+generate_signature(facebook_request* request) __attribute__ ((deprecated));
 
 extern void
-facebook_request_reset(facebook_request* request);
+facebook_request_reset(facebook_request* request) __attribute__ ((deprecated));
 
 extern void
-facebook_request_null(facebook_request* request);
+facebook_request_null(facebook_request* request) __attribute__ ((deprecated));
 
 extern facebook_request*
-facebook_request_new();
+facebook_request_new() __attribute__ ((deprecated));
 
 extern void
-facebook_request_free(facebook_request* request);
+facebook_request_free(facebook_request* request) __attribute__ ((deprecated));
 
 #endif

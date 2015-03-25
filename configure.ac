@@ -12,7 +12,7 @@ AC_SUBST([FACEBOOKCOMMON_LT_VERSION],[$facebookcommon_lt_current:$facebookcommon
 
 AM_INIT_AUTOMAKE
 
-AC_CONFIG_SRCDIR([src/facebookcommon.c])
+# AC_CONFIG_SRCDIR([src/facebookcommon.c])
 # FIXME: start to use config.h
 #AC_CONFIG_HEADERS([config.h])
 
@@ -20,6 +20,7 @@ AC_DEFINE(_GNU_SOURCE)
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_LIBTOOL
@@ -34,9 +35,22 @@ AC_CHECK_HEADERS([stdlib.h])
 AC_TYPE_SSIZE_T
 
 PKG_CHECK_MODULES(DEPS, [glib-2.0 gconf-2.0 >= 2.16 libxml-2.0 >= 2.6.32 conic feedservice2])
+PKG_CHECK_MODULES(QT4, [QtCore QtGui QtWebKit >= 4.4.0], [
+  AC_PATH_PROGS(MOC, [moc-qt4 moc], moc,`eval $PKG_CONFIG --variable=exec_prefix QtCore`/bin)
+  AC_PATH_PROG(RCC, rcc, rcc,`eval $PKG_CONFIG --variable=exec_prefix QtCore`/bin)
+  AC_PATH_PROGS(UIC, [uic-qt4 uic], uic,`eval $PKG_CONFIG --variable=exec_prefix QtCore`/bin)
+], [
+  AC_MSG_ERROR([Qt 4 library not found])
+])
+
 AC_SUBST(DEPS_CFLAGS)
 AC_SUBST(DEPS_LIBS)
 
-AC_CONFIG_FILES([Makefile facebookcommon.pc])
+AC_CONFIG_FILES([
+Makefile 
+src/Makefile
+src/common/Makefile
+src/oauth/Makefile
+src/common/facebookcommon.pc])
 
 AC_OUTPUT
