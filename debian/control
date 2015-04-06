@@ -1,14 +1,15 @@
 Source: feedservice-plugin-fb-common
 Priority: extra
 Maintainer: Ivaylo Dimitrov <freemangordon@abv.bg>
-Build-Depends: debhelper (>= 5), libglib2.0-dev, libxml2-dev, libconic0-dev, feedservice2-dev
+Build-Depends: debhelper (>= 5), libglib2.0-dev, libgconf2-dev, ,libqt4-dev, libxml2-dev, libconic0-dev, feedservice2-dev
 Standards-Version: 3.7.2
 Section: libs
 
 Package: feedservice-plugin-fb-common-dev
 Section: libdevel
 Architecture: any
-Depends: feedservice-plugin-fb-common (= ${Source-Version})
+Depends: ${shlibs:Depends}
+Conflicts: feedservice-plugin-fb-common
 Description: Development package for Facebook Common Library
 
 Package: feedservice-plugin-fb-common-dbg
@@ -20,7 +21,7 @@ Description: Debugging symbols for Facebook Common Library
 Package: feedservice-plugin-fb-common
 Section: user/hidden
 Architecture: any
-Depends: feedservice2 (>= 0.5.4), ${shlibs:Depends}, ${misc:Depends}
-Description: Facebook Common Library 
+Depends: feedservice2 (>= 0.5.9), sharing-service-facebook (>= 0.6.1), ${shlibs:Depends}, ${misc:Depends}
+Description: Facebook Common Library
  .
- Provides a common functionality to facebook 
+ Provides a common functionality to facebook

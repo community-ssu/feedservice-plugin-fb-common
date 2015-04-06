@@ -16,9 +16,10 @@ int main(int argc, char *argv[])
   login->setEmail(a.arguments()[3]);
   login->setPassword(a.arguments()[4]);
 
-  login->login();
   if (a.argc() > 5)
     login->setScope(a.arguments()[5]);
+
+  login->login();
 
   int rv = a.exec();
 

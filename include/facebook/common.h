@@ -21,13 +21,15 @@
 #ifndef _FACEBOOKCOMMON_H_
 #define _FACEBOOKCOMMON_H_
 
-#define FACEBOOK_CREDENTIAL_SECRET_KEY  "/apps/maemo/facebook/secret_key"
-#define FACEBOOK_CREDENTIAL_SESSION_KEY "/apps/maemo/facebook/session_key"
-#define FACEBOOK_CREDENTIAL_UID         "/apps/maemo/facebook/uid"
-#define FACEBOOK_CREDENTIAL_EMAIL       "/apps/maemo/facebook/email"
+#define FACEBOOK_CREDENTIAL_SECRET_KEY          "/apps/maemo/facebook/secret_key"
+#define FACEBOOK_CREDENTIAL_SESSION_KEY         "/apps/maemo/facebook/session_key"
+#define FACEBOOK_CREDENTIAL_UID                 "/apps/maemo/facebook/uid"
+#define FACEBOOK_CREDENTIAL_EMAIL               "/apps/maemo/facebook/email"
+#define FACEBOOK_GRAPH_CREDENTIAL_ACCESS_TOKEN  "/apps/maemo/facebook/access_token"
 
 #define FACEBOOK_API_KEY                "765c02438771b10df50fe933bfaa7734"
 #define FACEBOOK_SECRET_KEY             "f3630da1d45d2b283e3237aa344f4d5d"
+#define FACEBOOK_GRAPH_API_CLIENT_ID    "779989358743970"
 
 #define FACEBOOK_AUTH_LOGIN_RESPONSE ((xmlChar*)"auth_login_response")
 #define FACEBOOK_ERROR_RESPONSE ((xmlChar*)"error_response")
@@ -102,5 +104,49 @@ facebook_request_new() __attribute__ ((deprecated));
 
 extern void
 facebook_request_free(facebook_request* request) __attribute__ ((deprecated));
+
+typedef struct {
+  gchar *access_token;
+  gchar *email;
+}facebook_graph_credentials;
+
+typedef struct {
+  guint type;
+  gchar *access_token;
+  glong tv_sec;
+  gchar *email;
+  gchar *password;
+  gchar *scope;
+  GHashTable *query_params;
+  query_loader *db_loader;
+  db_interface *database;
+  file_watcher *watcher;
+  gpointer data;
+  gint validation_status;
+}facebook_graph_request;
+
+extern facebook_graph_credentials*
+facebook_graph_login(facebook_graph_request *request,
+                     ConIcConnection *con,
+                     HttpProgress *progress,
+                     GError **error);
+extern void
+facebook_store_graph_credentials_to_gconf(
+    facebook_graph_credentials *credentials);
+
+extern void
+facebook_graph_credentials_free(facebook_graph_credentials *credentials);
+
+extern facebook_graph_request *
+facebook_graph_request_new();
+
+void
+facebook_graph_request_null(facebook_graph_request *request);
+
+extern void
+facebook_graph_request_reset(facebook_graph_request *request);
+
+extern void
+facebook_graph_request_free(facebook_graph_request *request);
 
 #endif

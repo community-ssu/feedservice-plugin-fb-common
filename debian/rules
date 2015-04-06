@@ -12,13 +12,19 @@
 
 
 
-CFLAGS = -Wall -g
+CFLAGS = -Wall -Werror -Wno-error=deprecated-declarations -g
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 else
 	CFLAGS += -O2
 endif
+
+ifneq (,$(findstring thumb,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -mthumb
+endif
+
+CXXFLAGS = $(CFLAGS)
 
 # shared library versions, option 1
 #version=2.0.5
@@ -31,14 +37,14 @@ endif
 
 configure: configure-stamp
 configure-stamp:
-	test -e ./configure || ./autogen.sh 
+	test -e ./configure || ./autogen.sh
 	dh_testdir
 	# Add here commands to configure the package.
 	CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ./configure --prefix=/usr
 	touch configure-stamp
 
 build: build-stamp
-build-stamp: configure-stamp 
+build-stamp: configure-stamp
 	dh_testdir
 
 	# Add here commands to compile the package.
@@ -53,12 +59,12 @@ clean:
 
 	-./antigen.sh
 
-	dh_clean 
+	dh_clean
 
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k 
+	dh_clean -k
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp
@@ -78,7 +84,7 @@ binary-arch: build install
 #	dh_installexamples
 	dh_install --sourcedir=debian/tmp
 #	dh_installmenu
-#	dh_installdebconf	
+#	dh_installdebconf
 #	dh_installlogrotate
 #	dh_installemacsen
 #	dh_installpam

@@ -28,15 +28,25 @@
 #include "facebook/feedserviceutils2.h"
 #include "facebook/common.h"
 
-//#define DEBUG_LOG(msg) g_debug(msg)
-#define DEBUG_LOG(msg)
+#include <unistd.h>
+
+struct _graph_api_logindata
+{
+  HttpProgress *progress;
+  gboolean done;
+  gchar *access_token;
+};
+typedef struct _graph_api_logindata graph_api_logindata;
+
+#define DEBUG_LOG(msg) g_debug(msg)
+//#define DEBUG_LOG(msg)
 
 #define RETURN_ERROR(_err_code_,_err_msg_) \
-  do{ \
+  do { \
     error_code = _err_code_; \
     error_message = _err_msg_; \
     goto out; \
-  }while(0);
+  } while(0)
 
 void facebook_store_credentials_to_gconf(facebook_credentials* credentials)
 {
@@ -181,14 +191,15 @@ gchar *facebook_get_email(void)
   return email;
 }
 
-static void facebook_request_common(facebook_request *request)
+static void
+facebook_request_common(facebook_request *request)
 {
   GTimeVal time;
   GString* string;
 
   string = g_string_new(FACEBOOK_SECRET_KEY);
   request->secret = string->str;
-  g_string_free(string,FALSE);
+  g_string_free(string, FALSE);
 
   g_get_current_time(&time);
   request->tv_sec = time.tv_sec;
@@ -208,7 +219,7 @@ static void facebook_request_common(facebook_request *request)
   g_hash_table_insert(request->query_params, "call_id",  string->str);
   g_hash_table_insert(request->query_params, "v", g_strdup("1.0"));
 
-  g_string_free(string,FALSE);
+  g_string_free(string, FALSE);
 
   request->data = NULL;
   request->validation_status = 0;
@@ -228,7 +239,8 @@ facebook_request *facebook_request_new()
   return request;
 }
 
-void facebook_request_null(facebook_request *request)
+void
+facebook_request_null(facebook_request *request)
 {
   DEBUG_LOG(__func__);
 
@@ -290,7 +302,7 @@ gboolean generate_signature(facebook_request *request)
   g_string_append(string, request->secret);
   sig = g_compute_checksum_for_string(G_CHECKSUM_MD5, string->str, -1);
 
-  g_string_free(string,TRUE);
+  g_string_free(string, TRUE);
 
   if(sig)
   {
@@ -350,9 +362,9 @@ facebook_credentials *facebook_login(facebook_request *request,
     g_warning(network_error->message);
     g_clear_error(&network_error);
     if (error_code == -1018)
-      RETURN_ERROR(error_code, FACEBOOK_ERROR_CANNOT_VERIFY_CERT)
+      RETURN_ERROR(error_code, FACEBOOK_ERROR_CANNOT_VERIFY_CERT);
     else
-      RETURN_ERROR(-1022, FACEBOOK_ERROR_NETWORK_ERROR)
+      RETURN_ERROR(-1022, FACEBOOK_ERROR_NETWORK_ERROR);
   }
 
   error_code = 0;
@@ -369,7 +381,7 @@ facebook_credentials *facebook_login(facebook_request *request,
   if (!xmlStrcmp(xmlnode->name, FACEBOOK_AUTH_LOGIN_RESPONSE))
   {
     if (!(xmlnode = xmlnode->children))
-      RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN)
+      RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
     else
     {
       while ((xmlnode = xmlnode->next))
@@ -407,7 +419,7 @@ facebook_credentials *facebook_login(facebook_request *request,
   else if (!xmlStrcmp(xmlnode->name, FACEBOOK_ERROR_RESPONSE))
   {
     if (!(xmlnode = xmlnode->children))
-      RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN)
+      RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
     else
     {
       while ((xmlnode = xmlnode->next))
@@ -423,9 +435,9 @@ facebook_credentials *facebook_login(facebook_request *request,
         g_free(content);
 
         if (error_code == 401) /* Authentication failure */
-          RETURN_ERROR(-1023, FACEBOOK_ERROR_CANNOT_LOGIN)
+          RETURN_ERROR(-1023, FACEBOOK_ERROR_CANNOT_LOGIN);
         else
-          RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN)
+          RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
       }
     }
   }
@@ -467,6 +479,241 @@ void facebook_request_free(facebook_request *request)
     g_free(request->session_key);
     g_free(request->email);
     g_free(request->password);
+
+    if (request->database)
+      db_interface_free(request->database);
+
+    if (request->db_loader)
+      query_loader_free(request->db_loader);
+
+    if (request->watcher)
+      file_watcher_free(request->watcher);
+
+    g_hash_table_destroy(request->query_params);
+
+    g_free(request);
+  }
+}
+
+static gboolean
+read_out(GIOChannel *channel, graph_api_logindata *data)
+{
+    gchar *s;
+    gsize size, term;
+
+    if (g_io_channel_read_line(channel, &s, &size, &term, NULL) ==
+        G_IO_STATUS_NORMAL)
+    {
+      if (size > 1)
+      {
+        if(s[0] == '%')
+        {
+          /* bytes total */
+          data->progress->callback(g_ascii_strtod(s + 1, NULL),
+                                   data->progress->user_data);
+          g_free(s);
+        }
+        else
+        {
+          /* final verdict */
+          s[term] = 0;
+          g_free(data->access_token);
+          data->access_token = s;
+          data->done = TRUE;
+        }
+      }
+      else
+        g_free(s);
+
+      return TRUE;
+    }
+
+    return FALSE;
+}
+
+facebook_graph_credentials *
+facebook_graph_login(facebook_graph_request *request,
+                     ConIcConnection *con,
+                     HttpProgress *progress,
+                     GError **error)
+{
+  facebook_graph_credentials *credentials = NULL;
+  GTimeVal time;
+  gchar *argv[7];
+  gint out;
+  GIOChannel *out_ch;
+  int error_code = 0;
+  char* error_message = NULL;
+  gchar **auth_result = NULL;
+  gint res;
+  graph_api_logindata data = {
+    progress,
+    FALSE,
+    NULL
+  };
+
+  DEBUG_LOG(__func__);
+
+  g_get_current_time(&time);
+  request->tv_sec = time.tv_sec;
+
+  argv[0] = "/usr/bin/facebookcommonoauth";
+  argv[1] = FACEBOOK_GRAPH_API_CLIENT_ID;
+  argv[2] = g_strdup_printf("%ld", request->tv_sec);
+  argv[3] = request->email;
+  argv[4] = request->password;
+  argv[5] = request->scope;
+  argv[6] = NULL;
+
+  /* Spawn child process */
+  res = g_spawn_async_with_pipes(NULL, argv, NULL, 0, NULL, NULL, NULL, NULL,
+                                 &out, NULL, NULL);
+  g_free(argv[2]);
+
+  if (!res)
+    RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
+
+  out_ch = g_io_channel_unix_new(out);
+
+  while(read_out(out_ch, &data));
+
+  g_io_channel_unref(out_ch);
+
+  if (data.access_token)
+  {
+    auth_result = g_strsplit(data.access_token, ",", -1);
+    int auth_val = atoi(auth_result[0]);
+
+    if (auth_val == 0)
+    {
+      if (auth_result[1])
+        request->access_token = g_strdup(auth_result[1]);
+      else
+        /* how did we get here */
+        RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
+    }
+    else
+    {
+      if (auth_result[1])
+        RETURN_ERROR(auth_val, auth_result[1]);
+      else
+        RETURN_ERROR(-1024, FACEBOOK_ERROR_CANNOT_LOGIN);
+    }
+  }
+
+out:
+  g_free(data.access_token);
+
+  if (!error_code)
+  {
+    credentials = g_try_new0(facebook_graph_credentials, 1);
+
+    if (credentials)
+    {
+      credentials->access_token = g_strdup(request->access_token);
+      credentials->email = g_strdup(request->email);
+    }
+  }
+  else
+    g_set_error(error, g_quark_from_static_string(FACEBOOK_ERROR_QUARK),
+                error_code, error_message);
+
+  if(auth_result)
+    g_strfreev(auth_result);
+
+  return credentials;
+}
+
+void
+facebook_store_graph_credentials_to_gconf(
+    facebook_graph_credentials *credentials)
+{
+  GConfClient* client = gconf_client_get_default();
+
+  if(client)
+  {
+    gconf_client_set_string(client, FACEBOOK_CREDENTIAL_EMAIL,
+                            credentials->email,
+                            NULL);
+    gconf_client_set_string(client, FACEBOOK_GRAPH_CREDENTIAL_ACCESS_TOKEN,
+                            credentials->access_token,
+                            NULL);
+    g_object_unref(client);
+  }
+}
+
+void
+facebook_graph_credentials_free(facebook_graph_credentials *credentials)
+{
+  if(credentials)
+  {
+    g_free(credentials->email);
+    g_free(credentials->access_token);
+    g_free(credentials);
+  }
+}
+
+static void
+facebook_graph_request_common(facebook_graph_request *request)
+{
+  request->query_params = g_hash_table_new_full(g_str_hash,
+                                                g_str_equal,
+                                                NULL,
+                                                g_free);
+  request->data = NULL;
+  request->validation_status = 0;
+}
+
+facebook_graph_request *facebook_graph_request_new()
+{
+  facebook_graph_request *request = NULL;
+
+  request = g_new0(facebook_graph_request, 1);
+
+  if(request)
+    facebook_graph_request_common(request);
+
+  return request;
+}
+
+void
+facebook_graph_request_null(facebook_graph_request *request)
+{
+  if (request)
+  {
+    g_free(request->access_token);
+    g_free(request->email);
+    g_free(request->password);
+    g_free(request->scope);
+
+    request->access_token = NULL;
+    request->email = NULL;
+    request->password = NULL;
+    request->scope = NULL;
+
+    g_hash_table_destroy(request->query_params);
+
+    facebook_graph_request_common(request);
+  }
+}
+
+void
+facebook_graph_request_reset(facebook_graph_request *request)
+{
+  g_hash_table_destroy(request->query_params);
+
+  facebook_graph_request_common(request);
+}
+
+void
+facebook_graph_request_free(facebook_graph_request *request)
+{
+  if (request)
+  {
+    g_free(request->access_token);
+    g_free(request->email);
+    g_free(request->password);
+    g_free(request->scope);
 
     if (request->database)
       db_interface_free(request->database);

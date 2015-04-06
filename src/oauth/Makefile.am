@@ -2,13 +2,16 @@ ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS = facebookcommonoauth
 
-facebookcommonoauth_CPPFLAGS = $(QT4_CFLAGS)
+QMAKE_TMP=oauth.pro
+QT4_QMAKE_DEFINES=$(shell touch $(QMAKE_TMP) && qmake $(QMAKE_TMP) -o - CONFIG+=debug | grep DEFINES | grep -v CFLAGS | grep -v CXXFLAGS | cut -d= -f2- && rm $(QMAKE_TMP))
+
+facebookcommonoauth_CPPFLAGS = $(QT4_QMAKE_DEFINES) $(QT4_CFLAGS)
 facebookcommonoauth_LDFLAGS  = $(QT4_LIBS)
 
 facebookcommonoauth_SOURCES = oauth.cpp qfacebooklogin.cpp qfacebooklogin.h moc_qfacebooklogin.cpp
 
 moc_%.cpp : %.h
-	$(MOC) $(QT4_CFLAGS) -I. -o "$@" "$<"
+	$(MOC) $(QT4_CFLAGS) $(QT4_QMAKE_DEFINES) -I. -o "$@" "$<"
 
 ui_%.h : %.ui
 	$(UIC) -o "$@" "$<"
