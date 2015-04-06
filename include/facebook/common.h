@@ -29,7 +29,7 @@
 
 #define FACEBOOK_API_KEY                "765c02438771b10df50fe933bfaa7734"
 #define FACEBOOK_SECRET_KEY             "f3630da1d45d2b283e3237aa344f4d5d"
-#define FACEBOOK_GRAPH_API_CLIENT_ID    "779989358743970"
+#define FACEBOOK_GRAPH_API_CLIENT_ID    "67878695711"
 
 #define FACEBOOK_AUTH_LOGIN_RESPONSE ((xmlChar*)"auth_login_response")
 #define FACEBOOK_ERROR_RESPONSE ((xmlChar*)"error_response")

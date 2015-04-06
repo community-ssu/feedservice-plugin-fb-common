@@ -1,10 +1,15 @@
+feedservice-plugin-fb-common (0.6.2) unstable; urgency=low
+
+  * Use stock application id instead of the test application
+
+ -- Ivaylo Dimitrov <freemangordon@abv.bg>  Mon, 6 Apr 2015 18:05:51 +0300
+
 feedservice-plugin-fb-common (0.6.1) unstable; urgency=low
 
   * depend on sharing-service-facebook, in attemt to force HAM to update
     it as well
 
  -- Ivaylo Dimitrov <freemangordon@abv.bg>  Sun, 5 Apr 2015 11:36:43 +0300
-
 
 feedservice-plugin-fb-common (0.6.0) unstable; urgency=low
 
